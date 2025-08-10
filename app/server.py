@@ -1,31 +1,46 @@
 import socket
 import threading
-from app.config import TCP_PORT,BUFFER_SIZE
+import os
+from app.config import TCP_PORT, BUFFER_SIZE
 
 def start_hub():
-    server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server.bind(('0.0.0.0',TCP_PORT))
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(('0.0.0.0', TCP_PORT))
     server.listen(5)
-    print(f"hub listening on port {TCP_PORT}")
+    print(f"Hub listening on port {TCP_PORT}")
 
     while True:
         conn, addr = server.accept()
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
 
-def handle_client(conn,addr):
-    print(f"[+] connection from {addr}")
+def handle_client(conn, addr):
+    print(f"[+] Connection from {addr}")
     
-    filename = conn.recv(BUFFER_SIZE).decode()
-    conn.send(b"ACK")
+    # Receive metadata
+    meta_data = conn.recv(BUFFER_SIZE).decode()
+    try:
+        filename, filesize = meta_data.split("|")
+        filesize = int(filesize)
+    except ValueError:
+        print("[ERROR] Invalid metadata.")
+        conn.close()
+        return
 
-    with open(filename,"wb") as file:
-        while True:
+    conn.send(b"ACK")  # acknowledge metadata
+
+    base_filename = os.path.basename(filename)
+    save_path = os.path.join(os.getcwd(), base_filename)
+
+    received_bytes = 0
+    with open(save_path, "wb") as file:
+        while received_bytes < filesize:
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
             file.write(data)
+            received_bytes += len(data)
 
-    print(f"[+] file {filename} received from {addr}")
-    conn.close()
-    print(f"connection closed: {addr}")
+    print(f"[+] File '{base_filename}' received ({received_bytes}/{filesize} bytes) from {addr}")
+    # conn.close()
+    
