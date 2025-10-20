@@ -15,5 +15,5 @@
 ## **__Installation__**
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/flick-cli.git
+git clone https://github.com/notreallyankit/flick-cli.git
 cd flick-cli
